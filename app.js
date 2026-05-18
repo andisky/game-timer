@@ -5,16 +5,14 @@ let phase = "idle";
 let endTime = 0;
 let interval;
 
-// 1. Set up the Web Audio API Context
-// This is the "master engine" for all sounds
+// 1. Web Audio API Setup
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioContext();
 
-// Variables to hold our loaded audio data
 let startSoundBuffer = null;
 let endSoundBuffer = null;
 
-// 2. Fetch and decode the audio files into memory immediately
+// 2. Preload Audio
 async function preloadAudio() {
   try {
     const startRes = await fetch("startsound.mp3");
@@ -24,23 +22,16 @@ async function preloadAudio() {
     const endRes = await fetch("endsound.mp3");
     const endArrayBuffer = await endRes.arrayBuffer();
     endSoundBuffer = await audioCtx.decodeAudioData(endArrayBuffer);
-    console.log("Audio files loaded and ready!");
   } catch (e) {
-    console.error("Failed to load audio. Check file paths.", e);
+    console.error("Failed to load audio:", e);
   }
 }
 
-// Call this right away so sounds load before the user clicks Start
 preloadAudio();
 
-// 3. Function to play a buffer
+// 3. Play Sound Function
 function playSound(buffer) {
-  if (!buffer) {
-      console.log("Sound not loaded yet!");
-      return; 
-  }
-  
-  // Create a new sound source, connect it to speakers, and play
+  if (!buffer) return; 
   const source = audioCtx.createBufferSource();
   source.buffer = buffer;
   source.connect(audioCtx.destination);
@@ -49,21 +40,23 @@ function playSound(buffer) {
 
 // Start button
 function start() {
-  const gameMin = prompt("Game time (minutes)?", "12");
-  const breakMin = prompt("Break time (minutes)?", "3");
+  // Read the values from the HTML inputs instead of using prompt()
+  const gameMin = document.getElementById("gameInput").value;
+  const breakMin = document.getElementById("breakInput").value;
 
-  if (!gameMin || !breakMin) return;
+  // Basic validation to make sure they didn't leave it blank
+  if (!gameMin || !breakMin || gameMin <= 0 || breakMin <= 0) {
+    alert("Please enter valid times!");
+    return;
+  }
 
+  // Convert minutes to milliseconds
   GAME = Number(gameMin) * 60 * 1000;
   BREAK = Number(breakMin) * 60 * 1000;
 
-  // 4. THE MAGIC UNLOCK: 
-  // iOS starts the audio context in a 'suspended' state. 
-  // We MUST resume it inside this user-click event.
+  // iOS Magic Unlock (Must remain right here inside the click event)
   if (audioCtx.state === 'suspended') {
-    audioCtx.resume().then(() => {
-        console.log("Audio Context Unlocked!");
-    });
+    audioCtx.resume();
   }
 
   startGame();
@@ -86,9 +79,7 @@ function format(ms) {
 function startGame() {
   phase = "game";
   endTime = Date.now() + GAME;
-
   playSound(startSoundBuffer);
-
   document.getElementById("mode").innerText = "Game";
 }
 
@@ -96,16 +87,13 @@ function startGame() {
 function startBreak() {
   phase = "break";
   endTime = Date.now() + BREAK;
-
   playSound(endSoundBuffer);
-
   document.getElementById("mode").innerText = "Break";
 }
 
 // Main timer loop
 function update() {
   const remaining = endTime - Date.now();
-
   document.getElementById("timer").innerText = format(remaining);
 
   if (remaining <= 0) {
