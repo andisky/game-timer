@@ -5,9 +5,12 @@ let phase = "idle";
 let endTime = 0;
 let interval;
 
+// 1. Create Audio objects globally so they are not destroyed/recreated
+const startAudio = new Audio("startsound.mp3");
+const endAudio = new Audio("endsound.mp3");
+
 // Start button
 function start() {
-
   const gameMin = prompt("Game time (minutes)?", "12");
   const breakMin = prompt("Break time (minutes)?", "3");
 
@@ -15,6 +18,13 @@ function start() {
 
   GAME = Number(gameMin) * 60 * 1000;
   BREAK = Number(breakMin) * 60 * 1000;
+
+  // 2. THE FIX: "Unlock" the break sound during the user's initial tap.
+  // We play and immediately pause it. This registers the audio as user-approved.
+  endAudio.play().then(() => {
+    endAudio.pause();
+    endAudio.currentTime = 0;
+  }).catch(err => console.log("Unlock skipped:", err));
 
   startGame();
 
@@ -32,51 +42,37 @@ function format(ms) {
   return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
 
-// Reliable iPhone audio playback
-function play(file) {
-
-  const audio = new Audio(file);
-
-  audio.play().catch(error => {
-    console.log("Audio error:", error);
-  });
-}
-
 // Start game phase
 function startGame() {
-
   phase = "game";
-
-  // Timer starts IMMEDIATELY when sound starts
   endTime = Date.now() + GAME;
 
-  play("startsound.mp3");
+  // 3. Play the pre-loaded global audio object
+  startAudio.currentTime = 0; // Reset to beginning in case it's played multiple times
+  startAudio.play().catch(error => console.log("Audio error:", error));
 
   document.getElementById("mode").innerText = "Game";
 }
 
 // Start break phase
 function startBreak() {
-
   phase = "break";
-
-  // Break starts IMMEDIATELY when end sound starts
   endTime = Date.now() + BREAK;
 
-  play("endsound.mp3");
+  // 4. Play the pre-loaded (and now unlocked) global audio object
+  endAudio.currentTime = 0; 
+  endAudio.play().catch(error => console.log("Audio error:", error));
 
   document.getElementById("mode").innerText = "Break";
 }
 
 // Main timer loop
 function update() {
-
   const remaining = endTime - Date.now();
 
   document.getElementById("timer").innerText = format(remaining);
 
   if (remaining <= 0) {
-
     if (phase === "game") {
       startBreak();
     } else {
