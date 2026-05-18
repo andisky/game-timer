@@ -5,9 +5,47 @@ let phase = "idle";
 let endTime = 0;
 let interval;
 
-// 1. Create Audio objects globally so they are not destroyed/recreated
-const startAudio = new Audio("startsound.mp3");
-const endAudio = new Audio("endsound.mp3");
+// 1. Set up the Web Audio API Context
+// This is the "master engine" for all sounds
+const AudioContext = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContext();
+
+// Variables to hold our loaded audio data
+let startSoundBuffer = null;
+let endSoundBuffer = null;
+
+// 2. Fetch and decode the audio files into memory immediately
+async function preloadAudio() {
+  try {
+    const startRes = await fetch("startsound.mp3");
+    const startArrayBuffer = await startRes.arrayBuffer();
+    startSoundBuffer = await audioCtx.decodeAudioData(startArrayBuffer);
+
+    const endRes = await fetch("endsound.mp3");
+    const endArrayBuffer = await endRes.arrayBuffer();
+    endSoundBuffer = await audioCtx.decodeAudioData(endArrayBuffer);
+    console.log("Audio files loaded and ready!");
+  } catch (e) {
+    console.error("Failed to load audio. Check file paths.", e);
+  }
+}
+
+// Call this right away so sounds load before the user clicks Start
+preloadAudio();
+
+// 3. Function to play a buffer
+function playSound(buffer) {
+  if (!buffer) {
+      console.log("Sound not loaded yet!");
+      return; 
+  }
+  
+  // Create a new sound source, connect it to speakers, and play
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioCtx.destination);
+  source.start(0);
+}
 
 // Start button
 function start() {
@@ -19,12 +57,14 @@ function start() {
   GAME = Number(gameMin) * 60 * 1000;
   BREAK = Number(breakMin) * 60 * 1000;
 
-  // 2. THE FIX: "Unlock" the break sound during the user's initial tap.
-  // We play and immediately pause it. This registers the audio as user-approved.
-  endAudio.play().then(() => {
-    endAudio.pause();
-    endAudio.currentTime = 0;
-  }).catch(err => console.log("Unlock skipped:", err));
+  // 4. THE MAGIC UNLOCK: 
+  // iOS starts the audio context in a 'suspended' state. 
+  // We MUST resume it inside this user-click event.
+  if (audioCtx.state === 'suspended') {
+    audioCtx.resume().then(() => {
+        console.log("Audio Context Unlocked!");
+    });
+  }
 
   startGame();
 
@@ -47,9 +87,7 @@ function startGame() {
   phase = "game";
   endTime = Date.now() + GAME;
 
-  // 3. Play the pre-loaded global audio object
-  startAudio.currentTime = 0; // Reset to beginning in case it's played multiple times
-  startAudio.play().catch(error => console.log("Audio error:", error));
+  playSound(startSoundBuffer);
 
   document.getElementById("mode").innerText = "Game";
 }
@@ -59,9 +97,7 @@ function startBreak() {
   phase = "break";
   endTime = Date.now() + BREAK;
 
-  // 4. Play the pre-loaded (and now unlocked) global audio object
-  endAudio.currentTime = 0; 
-  endAudio.play().catch(error => console.log("Audio error:", error));
+  playSound(endSoundBuffer);
 
   document.getElementById("mode").innerText = "Break";
 }
