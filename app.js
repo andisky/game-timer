@@ -1,18 +1,28 @@
 let GAME = 12 * 60 * 1000;
 let BREAK = 3 * 60 * 1000;
 
+// 1. Ask for times IMMEDIATELY when the page loads
+const gameMin = prompt("Game time (minutes)?", "12");
+const breakMin = prompt("Break time (minutes)?", "3");
+
+if (gameMin && breakMin) {
+  GAME = Number(gameMin) * 60 * 1000;
+  BREAK = Number(breakMin) * 60 * 1000;
+}
+
 let phase = "idle";
 let endTime = 0;
 let interval;
+let heartbeatInterval; 
 
-// 1. Web Audio API Setup
+// Web Audio API Setup
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 const audioCtx = new AudioContext();
 
 let startSoundBuffer = null;
 let endSoundBuffer = null;
 
-// 2. Preload Audio
+// Preload Audio
 async function preloadAudio() {
   try {
     const startRes = await fetch("startsound.mp3");
@@ -29,7 +39,12 @@ async function preloadAudio() {
 
 preloadAudio();
 
-// 3. Play Sound Function
+// Update the initial timer text on the screen to match their input
+window.onload = function() {
+    document.getElementById("timer").innerText = format(GAME);
+};
+
+// Play Sound Function
 function playSound(buffer) {
   if (!buffer) return; 
   const source = audioCtx.createBufferSource();
@@ -38,32 +53,40 @@ function playSound(buffer) {
   source.start(0);
 }
 
-// Start button
+// The Heartbeat (Keeps iOS from muting the tab after 12 minutes)
+function playSilentPing() {
+  if (audioCtx.state === 'suspended') return;
+  const silentBuffer = audioCtx.createBuffer(1, 1, 22050);
+  const source = audioCtx.createBufferSource();
+  source.buffer = silentBuffer;
+  source.connect(audioCtx.destination);
+  source.start(0);
+}
+
+// Start button (Triggered when they click the button)
 function start() {
-  // Read the values from the HTML inputs instead of using prompt()
-  const gameMin = document.getElementById("gameInput").value;
-  const breakMin = document.getElementById("breakInput").value;
+  // Prevent starting the timer twice if they click the button again
+  if (phase !== "idle") return; 
 
-  // Basic validation to make sure they didn't leave it blank
-  if (!gameMin || !breakMin || gameMin <= 0 || breakMin <= 0) {
-    alert("Please enter valid times!");
-    return;
-  }
-
-  // Convert minutes to milliseconds
-  GAME = Number(gameMin) * 60 * 1000;
-  BREAK = Number(breakMin) * 60 * 1000;
-
-  // iOS Magic Unlock (Must remain right here inside the click event)
+  // iOS Magic Unlock: This MUST happen during the button click
   if (audioCtx.state === 'suspended') {
     audioCtx.resume();
   }
 
   startGame();
 
+  // Start the countdown loop
   if (!interval) {
     interval = setInterval(update, 200);
   }
+
+  // Start the heartbeat to keep iOS awake
+  if (!heartbeatInterval) {
+    heartbeatInterval = setInterval(playSilentPing, 30000); 
+  }
+  
+  // Hide the start button so they don't click it again
+  document.querySelector("button").style.display = "none"; 
 }
 
 // Format timer
@@ -71,7 +94,6 @@ function format(ms) {
   const s = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(s / 60);
   const r = s % 60;
-
   return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
 
