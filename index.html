@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Game Timer</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#111111">
+
+<style>
+body {
+  margin: 0;
+  height: 100vh;
+  background: #111;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-family: Arial;
+}
+
+#mode {
+  font-size: 24px;
+  opacity: 0.7;
+}
+
+#timer {
+  font-size: 90px;
+  margin: 20px;
+}
+
+button {
+  font-size: 20px;
+  padding: 12px 24px;
+  cursor: pointer;
+}
+</style>
+
+</head>
+
+<body>
+
+<div id="mode">Ready</div>
+<div id="timer">12:00</div>
+
+<button onclick="start()">Start</button>
+
+<audio id="startSound" src="startsound.mp3"></audio>
+<audio id="endSound" src="endsound.mp3"></audio>
+
+<script src="app.js"></script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+
+</body>
+</html>
