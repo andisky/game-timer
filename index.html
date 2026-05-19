@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Game Timer</title>
+
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#111111">
 
@@ -20,7 +21,6 @@
     font-family: Arial, sans-serif;
   }
 
-  /* Setup Screen */
   #setup-view {
     display: flex;
     flex-direction: column;
@@ -49,7 +49,6 @@
     outline: none;
   }
 
-  /* Timer Screen (Hidden by default) */
   #timer-view {
     display: none; 
     flex-direction: column;
@@ -78,22 +77,23 @@
     font-weight: bold;
   }
 </style>
+
 </head>
 <body>
 
 <!-- SETUP SCREEN -->
 <div id="setup-view">
   <label>
-    Game time (minutes)
+    Game time (Minuten)
     <input type="number" id="gameInput" value="12" min="1">
   </label>
   
   <label>
-    Break time (minutes)
+    Break time (Minuten)
     <input type="number" id="breakInput" value="3" min="1">
   </label>
 
-  <button onclick="start()">Start Timer</button>
+  <button onclick="start()">Start</button>
 </div>
 
 <!-- TIMER SCREEN -->
@@ -102,133 +102,17 @@
   <div id="timer">00:00</div>
 </div>
 
+<!-- Audio-Elemente -->
+<audio id="startSound" src="startsound.mp3"></audio>
+<audio id="endSound" src="endsound.mp3"></audio>
+
+<!-- HIER laden wir deine externe app.js -->
+<script src="app.js"></script>
+
 <script>
-  let GAME = 12 * 60 * 1000;
-  let BREAK = 3 * 60 * 1000;
-
-  let phase = "idle";
-  let endTime = 0;
-  let interval;
-  let heartbeatInterval; 
-
-  // 1. Web Audio API Setup
-  const AudioContext = window.AudioContext || window.webkitAudioContext;
-  const audioCtx = new AudioContext();
-
-  let startSoundBuffer = null;
-  let endSoundBuffer = null;
-
-  // 2. Preload Audio into memory
-  async function preloadAudio() {
-    try {
-      const startRes = await fetch("startsound.mp3");
-      const startArrayBuffer = await startRes.arrayBuffer();
-      startSoundBuffer = await audioCtx.decodeAudioData(startArrayBuffer);
-
-      const endRes = await fetch("endsound.mp3");
-      const endArrayBuffer = await endRes.arrayBuffer();
-      endSoundBuffer = await audioCtx.decodeAudioData(endArrayBuffer);
-    } catch (e) {
-      console.error("Failed to load audio:", e);
-    }
-  }
-
-  preloadAudio();
-
-  // 3. Play Sound Function
-  function playSound(buffer) {
-    if (!buffer) return; 
-    const source = audioCtx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(audioCtx.destination);
-    source.start(0);
-  }
-
-  // 4. The Heartbeat (Keeps iOS from sleeping the audio engine)
-  function playSilentPing() {
-    if (audioCtx.state === 'suspended') return;
-    const silentBuffer = audioCtx.createBuffer(1, 1, 22050);
-    const source = audioCtx.createBufferSource();
-    source.buffer = silentBuffer;
-    source.connect(audioCtx.destination);
-    source.start(0);
-  }
-
-  // 5. Start button logic
-  function start() {
-    // Read the times from the input boxes
-    const gameMin = document.getElementById("gameInput").value;
-    const breakMin = document.getElementById("breakInput").value;
-
-    if (!gameMin || !breakMin) return;
-
-    GAME = Number(gameMin) * 60 * 1000;
-    BREAK = Number(breakMin) * 60 * 1000;
-
-    // iOS Magic Unlock: This taps into the physical button click to authorize audio
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
-
-    // Switch the UI from Settings to Timer
-    document.getElementById("setup-view").style.display = "none";
-    document.getElementById("timer-view").style.display = "flex";
-
-    startGame();
-
-    // Start the countdown loop
-    if (!interval) {
-      interval = setInterval(update, 200);
-    }
-
-    // Start the heartbeat to keep iOS awake
-    if (!heartbeatInterval) {
-      heartbeatInterval = setInterval(playSilentPing, 30000); 
-    }
-  }
-
-  // Format timer
-  function format(ms) {
-    const s = Math.max(0, Math.floor(ms / 1000));
-    const m = Math.floor(s / 60);
-    const r = s % 60;
-    return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
-  }
-
-  // Start game phase
-  function startGame() {
-    phase = "game";
-    endTime = Date.now() + GAME;
-    playSound(startSoundBuffer);
-    document.getElementById("mode").innerText = "Game";
-  }
-
-  // Start break phase
-  function startBreak() {
-    phase = "break";
-    endTime = Date.now() + BREAK;
-    playSound(endSoundBuffer);
-    document.getElementById("mode").innerText = "Break";
-  }
-
-  // Main timer loop
-  function update() {
-    const remaining = endTime - Date.now();
-    document.getElementById("timer").innerText = format(remaining);
-
-    if (remaining <= 0) {
-      if (phase === "game") {
-        startBreak();
-      } else {
-        startGame();
-      }
-    }
-  }
-
-  // Register Service Worker if you have one
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-  }
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
 </script>
 
 </body>
