@@ -25,6 +25,7 @@ function playSilentPing() {
 }
 
 // Start-Button Logik
+// Start-Button Logik
 function start() {
   const gameMin = document.getElementById("gameInput").value;
   const breakMin = document.getElementById("breakInput").value;
@@ -35,8 +36,8 @@ function start() {
   BREAK = Number(breakMin) * 60 * 1000;
 
   // --- iOS UNLOCK MAGIC ---
-  // Die normalen MP3s freischalten (kurz anspielen und sofort pausieren)
-  startAudio.play().then(() => startAudio.pause()).catch(e => console.log(e));
+  // HIER IST DER FIX: Wir schalten nur noch den endSound stumm frei. 
+  // Der startSound wird unten in startGame() sowieso direkt echt abgespielt.
   endAudio.play().then(() => endAudio.pause()).catch(e => console.log(e));
 
   // Den Heartbeat-Motor freischalten
@@ -49,7 +50,7 @@ function start() {
   document.getElementById("setup-view").style.display = "none";
   document.getElementById("timer-view").style.display = "flex";
 
-  startGame();
+  startGame(); // Hier wird startAudio normal und fehlerfrei gestartet
 
   // Timer Loop starten
   if (!interval) {
